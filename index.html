@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en" data-skin="c">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude's CFB Power Lines</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&family=Teko:wght@500;600;700&family=Barlow:wght@400;500;600&family=Anton&family=Libre+Franklin:wght@400;500;600;800&family=Saira+Extra+Condensed:wght@600;700;800&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a press-box scoreboard. Condensed display numerals, team-color chips, one amber accent for Claude's numbers. */
+:root{
+  --bg:#F3F4F1; --surface:#FFFFFF; --ink:#141A22; --muted:#5D6672; --line:#DADDD6;
+  --accent:#C77700; --accent-soft:#FFF1D6; --good:#1F7A4D; --warn:#A35A00;
+  --display:"Barlow Condensed", "Arial Narrow", sans-serif;
+  --body:"IBM Plex Sans", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1219; --surface:#151C26; --ink:#E9ECEF; --muted:#9AA4B1; --line:#263140;
+    --accent:#F2A93B; --accent-soft:#3A2A10; --good:#4CC38A; --warn:#F2A93B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1219; --surface:#151C26; --ink:#E9ECEF; --muted:#9AA4B1; --line:#263140;
+  --accent:#F2A93B; --accent-soft:#3A2A10; --good:#4CC38A; --warn:#F2A93B; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.5}
+.wrap{max-width:1040px; margin:0 auto; padding:0 16px 48px}
+header.top{padding:20px 0 0}
+.brand{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+.brand h1{font-family:var(--display); font-weight:800; font-size:34px; letter-spacing:.5px; margin:0; text-transform:uppercase; text-wrap:balance}
+.brand .stamp{font-family:var(--mono); font-size:12px; color:var(--muted)}
+nav.tabs{display:flex; gap:4px; margin:16px 0 20px; border-bottom:2px solid var(--line); overflow-x:auto}
+nav.tabs a{font-family:var(--display); font-weight:700; font-size:18px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); text-decoration:none; padding:8px 14px; border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--ink); border-color:var(--accent)}
+nav.tabs a:focus-visible, button:focus-visible, select:focus-visible, .team-chip:focus-visible, .row:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+section.view{display:none}
+section.view.on{display:block}
+h2{font-family:var(--display); font-weight:700; font-size:24px; text-transform:uppercase; margin:0 0 4px; letter-spacing:.3px}
+.sub{color:var(--muted); margin:0 0 16px; max-width:65ch}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:10px}
+
+/* matchup cards */
+.games{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px}
+.game{padding:14px; display:grid; gap:10px}
+.team-line{display:flex; align-items:center; gap:10px}
+.swatch{width:6px; align-self:stretch; border-radius:3px; min-height:22px}
+.team-line .nm{font-weight:600}
+.team-line .rk{font-family:var(--mono); font-size:12px; color:var(--muted); min-width:24px}
+.lines{display:grid; grid-template-columns:1fr 1fr auto; gap:8px; border-top:1px solid var(--line); padding-top:10px}
+.lines div{display:grid}
+.lines .lbl{font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted)}
+.lines .val{font-family:var(--mono); font-weight:600; font-size:15px}
+.lines .claude .val{color:var(--accent)}
+.pill{display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:99px; text-transform:uppercase; letter-spacing:.5px}
+.pill.strong{background:var(--accent-soft); color:var(--accent)}
+.pill.lean{background:transparent; border:1px solid var(--line); color:var(--muted)}
+.pill.open{border:1px dashed var(--line); color:var(--muted)}
+.note{font-size:13px; color:var(--muted); max-width:70ch}
+
+/* calculator */
+.calc{padding:18px; display:grid; gap:16px}
+.pickers{display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:end}
+.pickers label{display:grid; gap:4px; font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted)}
+select{font:inherit; font-size:16px; padding:10px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); width:100%}
+.vs{font-family:var(--display); font-weight:800; font-size:22px; color:var(--muted); padding-bottom:8px}
+.site{display:flex; gap:6px; flex-wrap:wrap}
+.site button{font:inherit; font-size:14px; padding:8px 14px; border-radius:99px; border:1px solid var(--line); background:transparent; color:var(--ink); cursor:pointer}
+.site button[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.result{display:grid; grid-template-columns:auto 1fr; gap:6px 20px; align-items:center; padding:16px; border-radius:10px; background:var(--accent-soft)}
+.result .big{font-family:var(--display); font-weight:800; font-size:44px; line-height:1; grid-row:span 2}
+.result .meta{font-size:14px; color:var(--ink)}
+.cmp{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.cmp .side{padding:12px; border-radius:8px; border:1px solid var(--line); display:grid; gap:2px}
+.cmp .side .r{font-family:var(--mono); font-size:22px; font-weight:600}
+
+/* rankings */
+.filters{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px}
+.filters button{font:inherit; font-size:13px; padding:5px 11px; border-radius:99px; border:1px solid var(--line); background:transparent; color:var(--ink); cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.top25{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:20px}
+.team-chip{position:relative; border:0; text-align:left; font:inherit; cursor:pointer; border-radius:8px; padding:10px 12px 10px 44px; min-height:58px; display:flex; align-items:center}
+.team-chip .rank{position:absolute; left:10px; top:50%; transform:translateY(-50%); font-family:var(--display); font-weight:800; font-size:24px; opacity:.85}
+.team-chip .nm{font-weight:600; line-height:1.2}
+.list{display:grid; gap:2px}
+.row{display:grid; grid-template-columns:44px 6px 1fr; gap:10px; align-items:center; padding:7px 10px; border-radius:6px; cursor:pointer; background:var(--surface); border:1px solid transparent}
+.row:hover{border-color:var(--line)}
+.row .rank{font-family:var(--mono); color:var(--muted); font-size:13px; text-align:right}
+.row .swatch{min-height:18px}
+.list-head{font-family:var(--display); font-weight:700; text-transform:uppercase; color:var(--muted); margin:6px 0}
+#pop{position:fixed; z-index:20; width:240px; padding:12px 14px; border-radius:10px; background:var(--surface); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.18); display:none; font-size:14px}
+#pop .t{font-weight:600; margin-bottom:6px; display:flex; gap:8px; align-items:center}
+#pop dl{display:grid; grid-template-columns:auto 1fr; gap:3px 12px; margin:0}
+#pop dt{color:var(--muted)}
+#pop dd{margin:0; font-family:var(--mono); text-align:right}
+
+/* best bets */
+.bets{display:grid; gap:10px}
+.bet{padding:14px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center}
+.bet .pick{font-family:var(--display); font-weight:800; font-size:26px; line-height:1.05}
+.bet .why{font-size:13px; color:var(--muted)}
+.bet .edge{text-align:right}
+.bet .edge .n{font-family:var(--mono); font-weight:600; font-size:22px; color:var(--accent)}
+.bet .edge .l{font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted)}
+footer{margin-top:28px; border-top:1px solid var(--line); padding-top:12px}
+@media (max-width:560px){
+  .pickers{grid-template-columns:1fr}
+  .vs{display:none}
+  .result{grid-template-columns:1fr}
+  .result .big{grid-row:auto; font-size:38px}
+  .bet{grid-template-columns:1fr}
+  .bet .edge{text-align:left}
+}
+
+/* ===================== Broadcast skin ===================== */
+
+html[data-skin] .team-chip{padding-left:68px!important}
+html[data-skin] .team-chip .rank{left:8px!important; width:52px; text-align:center}
+/* ---------- C: Broadcast ---------- */
+/* Broadcast look */
+:root[data-skin="c"]{--bg:#06122B; --surface:rgba(255,255,255,.06); --ink:#F4F7FF; --muted:#A9B6D3; --line:rgba(255,255,255,.12); --accent:#35E0FF; --accent-soft:rgba(53,224,255,.12);
+  --display:"Saira Extra Condensed","Arial Narrow",sans-serif; --body:"Archivo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace; color-scheme:dark}
+html[data-skin="c"] body{background:linear-gradient(160deg,#0A1E4A 0%,#06122B 45%,#030A1A 100%) fixed}
+html[data-skin="c"] .brand h1{font-size:50px; font-weight:800; font-style:italic; letter-spacing:.5px; background:linear-gradient(90deg,#fff,#9FEFFF); -webkit-background-clip:text; background-clip:text; color:transparent}
+html[data-skin="c"] nav.tabs{border-bottom:0; gap:8px}
+html[data-skin="c"] nav.tabs a{font-style:italic; font-weight:800; font-size:20px; border:0; background:rgba(255,255,255,.06); clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%); padding:8px 20px; margin:0}
+html[data-skin="c"] nav.tabs a[aria-current="page"]{background:var(--accent); color:#04122E}
+html[data-skin="c"] h2{font-style:italic; font-weight:800; font-size:34px}
+html[data-skin="c"] .card{backdrop-filter:blur(8px); border-radius:14px; background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03))}
+html[data-skin="c"] .swatch{width:10px; transform:skewX(-14deg); border-radius:2px}
+html[data-skin="c"] .lines .claude .val, html[data-skin="c"] .bet .edge .n{color:var(--accent)}
+html[data-skin="c"] .result{background:linear-gradient(90deg,rgba(53,224,255,.18),rgba(53,224,255,.02)); border:1px solid rgba(53,224,255,.35)}
+html[data-skin="c"] .result .big{font-style:italic; font-size:60px}
+html[data-skin="c"] .bet .pick{font-family:var(--display); font-style:italic; font-weight:800; font-size:34px}
+html[data-skin="c"] .site button[aria-pressed="true"], html[data-skin="c"] .filters button[aria-pressed="true"]{background:var(--accent); color:#04122E; border-color:var(--accent)}
+html[data-skin="c"] select{background:rgba(0,0,0,.35)}
+html[data-skin="c"] .team-chip{background:linear-gradient(100deg,var(--tc) 0%,var(--tc) 55%,color-mix(in srgb,var(--tc) 55%,#000) 100%)!important; clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%); border-radius:0; min-height:66px; padding-left:58px}
+html[data-skin="c"] .team-chip .rank{font-family:var(--display); font-style:italic; font-size:40px; font-weight:800; left:18px}
+html[data-skin="c"] .team-chip .nm{font-weight:700; text-transform:uppercase; font-size:13px; letter-spacing:.4px}
+html[data-skin="c"] .row{background:rgba(255,255,255,.04); border-radius:4px}
+html[data-skin="c"] .row:hover{background:rgba(255,255,255,.09)}
+html[data-skin="c"] #pop{background:#0B1A3D; border-color:rgba(53,224,255,.4)}
+
+@media (prefers-reduced-motion: reduce){ *{transition:none!important; animation:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="brand"><h1>Claude's CFB Power Lines</h1><span class="stamp" id="stamp"></span></div>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#home" data-v="home">This Week</a>
+    <a href="#line-maker" data-v="line-maker">Line Maker</a>
+    <a href="#rankings" data-v="rankings">Rankings</a>
+    <a href="#best-bets" data-v="best-bets">Claude's Best Bets</a>
+  </nav>
+</header>
+
+<section class="view" id="v-home">
+  <h2 id="home-title">Ranked vs. ranked</h2>
+  <p class="sub">My line for every game this week between two ranked teams, next to the sportsbook line. Numbers next to teams are their top-25 rankings going into the week.</p>
+  <div class="games" id="ranked-games"></div>
+  <p class="note" style="margin-top:16px" id="home-note"></p>
+</section>
+
+<section class="view" id="v-line-maker">
+  <h2>Line Maker</h2>
+  <p class="sub">Pick any two FBS teams. The line is Team A's rating minus Team B's, plus home field if someone is at home. It's all worked out on this page, so nothing gets sent anywhere.</p>
+  <div class="card calc">
+    <div class="pickers">
+      <label for="teamA">Team A<select id="teamA"></select></label>
+      <div class="vs">VS</div>
+      <label for="teamB">Team B<select id="teamB"></select></label>
+    </div>
+    <div class="site" role="group" aria-label="Site">
+      <button type="button" id="site-n" data-site="n" aria-pressed="true">Neutral field</button>
+      <button type="button" id="site-a" data-site="a" aria-pressed="false">Team A at home</button>
+      <button type="button" id="site-b" data-site="b" aria-pressed="false">Team B at home</button>
+    </div>
+    <div class="result" aria-live="polite">
+      <div class="big" id="out-line"></div>
+      <div class="meta" id="out-wp"></div>
+      <div class="meta" id="out-raw"></div>
+    </div>
+    <div class="cmp" id="cmp"></div>
+  </div>
+</section>
+
+<section class="view" id="v-rankings">
+  <h2>Power rankings</h2>
+  <p class="sub">All 138 FBS teams. Hover over or tap a team for its rating, how many betting lines it appears in, data confidence, and where it ranks in its conference.</p>
+  <div class="filters" id="conf-filters" role="group" aria-label="Filter by conference"></div>
+  <div class="list-head" id="top-head">Top 25</div>
+  <div class="top25" id="top25"></div>
+  <div class="list-head" id="rest-head">26 through 138</div>
+  <div class="list" id="rest"></div>
+</section>
+
+<section class="view" id="v-best-bets">
+  <h2>Claude's Best Bets</h2>
+  <p class="sub" id="bets-sub"></p>
+  <div class="bets" id="bets"></div>
+  <p class="note" style="margin-top:16px">For fun, not financial advice. "Strong" means both teams show up in plenty of betting lines and the book number is a current line. "Lean" means one side is rated mostly from SP+, or the book number is the Sunday opener and may have moved. A gap of 2–3 points is within this model's normal error, so treat the biggest gaps with the most skepticism, not the most confidence.</p>
+</section>
+
+<footer class="note" id="foot"></footer>
+</div>
+<div id="pop" role="dialog" aria-live="polite"></div>
+
+<script>
+/*DATA_START*/const DATA = {"updated":"2026-11-12","week":11,"hfa":2.94,"offset":49.391,"method":{"HL":2.0,"W_RES":0.25,"LAM":2.0,"LAM_FCS":0.02,"CAP":28},"teams":[{"team":"Notre Dame","conf":"Ind","color":"#0C2340","rating":71.5,"rank":1,"conf_rank":1,"conf_size":2,"games":7,"results":7,"confidence":"High"},{"team":"Georgia","conf":"SEC","color":"#BA0C2F","rating":71.1,"rank":2,"conf_rank":1,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"Miami","conf":"ACC","color":"#005030","rating":68.7,"rank":3,"conf_rank":1,"conf_size":17,"games":6,"results":6,"confidence":"High"},{"team":"Ohio State","conf":"Big Ten","color":"#BB0000","rating":68.3,"rank":4,"conf_rank":1,"conf_size":18,"games":7,"results":7,"confidence":"High"},{"team":"Indiana","conf":"Big Ten","color":"#990000","rating":67.3,"rank":5,"conf_rank":2,"conf_size":18,"games":7,"results":7,"confidence":"High"},{"team":"Alabama","conf":"SEC","color":"#9E1B32","rating":67.1,"rank":6,"conf_rank":2,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"Texas","conf":"SEC","color":"#BF5700","rating":66.6,"rank":7,"conf_rank":3,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"LSU","conf":"SEC","color":"#461D7C","rating":65.9,"rank":8,"conf_rank":4,"conf_size":16,"games":6,"results":6,"confidence":"High"},{"team":"Utah","conf":"Big 12","color":"#CC0000","rating":64.4,"rank":9,"conf_rank":1,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"Oregon","conf":"Big Ten","color":"#154733","rating":63.5,"rank":10,"conf_rank":3,"conf_size":18,"games":4,"results":4,"confidence":"Medium"},{"team":"Wake Forest","conf":"ACC","color":"#9E7E38","rating":63.4,"rank":11,"conf_rank":2,"conf_size":17,"games":4,"results":3,"confidence":"Medium"},{"team":"Tennessee","conf":"SEC","color":"#FF8200","rating":62.8,"rank":12,"conf_rank":5,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"Texas Tech","conf":"Big 12","color":"#CC0000","rating":62.4,"rank":13,"conf_rank":2,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"UCLA","conf":"Big Ten","color":"#2D68C4","rating":62.4,"rank":14,"conf_rank":4,"conf_size":18,"games":5,"results":5,"confidence":"High"},{"team":"Louisville","conf":"ACC","color":"#AD0000","rating":62.4,"rank":15,"conf_rank":3,"conf_size":17,"games":4,"results":3,"confidence":"Medium"},{"team":"Iowa","conf":"Big Ten","color":"#FFCD00","rating":61.8,"rank":16,"conf_rank":5,"conf_size":18,"games":6,"results":6,"confidence":"High"},{"team":"Ole Miss","conf":"SEC","color":"#CE1126","rating":61.4,"rank":17,"conf_rank":6,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"BYU","conf":"Big 12","color":"#002E5D","rating":61.1,"rank":18,"conf_rank":3,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"USC","conf":"Big Ten","color":"#990000","rating":60.6,"rank":19,"conf_rank":6,"conf_size":18,"games":6,"results":6,"confidence":"High"},{"team":"Liberty","conf":"CUSA","color":"#002D62","rating":60.4,"rank":20,"conf_rank":1,"conf_size":10,"games":0,"results":0,"confidence":"Low"},{"team":"Boise State","conf":"Pac-12","color":"#0033A0","rating":60.1,"rank":21,"conf_rank":1,"conf_size":8,"games":5,"results":5,"confidence":"High"},{"team":"SMU","conf":"ACC","color":"#354CA1","rating":60.1,"rank":22,"conf_rank":4,"conf_size":17,"games":7,"results":7,"confidence":"High"},{"team":"Houston","conf":"Big 12","color":"#C8102E","rating":60.0,"rank":23,"conf_rank":4,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"Arizona","conf":"Big 12","color":"#AB0520","rating":60.0,"rank":24,"conf_rank":5,"conf_size":16,"games":3,"results":3,"confidence":"Medium"},{"team":"Oklahoma State","conf":"Big 12","color":"#FF7300","rating":59.9,"rank":25,"conf_rank":6,"conf_size":16,"games":4,"results":3,"confidence":"Medium"},{"team":"Nebraska","conf":"Big Ten","color":"#E41C38","rating":59.5,"rank":26,"conf_rank":7,"conf_size":18,"games":3,"results":2,"confidence":"Medium"},{"team":"Baylor","conf":"Big 12","color":"#154734","rating":59.5,"rank":27,"conf_rank":7,"conf_size":16,"games":2,"results":2,"confidence":"Medium"},{"team":"Missouri","conf":"SEC","color":"#F1B82D","rating":58.8,"rank":28,"conf_rank":7,"conf_size":16,"games":7,"results":7,"confidence":"High"},{"team":"New Mexico","conf":"MWC","color":"#BA0C2F","rating":58.6,"rank":29,"conf_rank":1,"conf_size":10,"games":2,"results":1,"confidence":"Medium"},{"team":"South Carolina","conf":"SEC","color":"#73000A","rating":58.6,"rank":30,"conf_rank":8,"conf_size":16,"games":6,"results":5,"confidence":"High"},{"team":"James Madison","conf":"Sun Belt","color":"#450084","rating":58.5,"rank":31,"conf_rank":1,"conf_size":14,"games":2,"results":0,"confidence":"Medium"},{"team":"Oklahoma","conf":"SEC","color":"#841617","rating":57.7,"rank":32,"conf_rank":9,"conf_size":16,"games":6,"results":5,"confidence":"High"},{"team":"Michigan","conf":"Big Ten","color":"#00274C","rating":57.6,"rank":33,"conf_rank":8,"conf_size":18,"games":4,"results":3,"confidence":"Medium"},{"team":"Northwestern","conf":"Big Ten","color":"#4E2A84","rating":57.5,"rank":34,"conf_rank":9,"conf_size":18,"games":6,"results":6,"confidence":"High"},{"team":"Wisconsin","conf":"Big Ten","color":"#C5050C","rating":57.4,"rank":35,"conf_rank":10,"conf_size":18,"games":4,"results":4,"confidence":"Medium"},{"team":"North Dakota State","conf":"MWC","color":"#0A5640","rating":57.3,"rank":36,"conf_rank":2,"conf_size":10,"games":0,"results":0,"confidence":"Low"},{"team":"Penn State","conf":"Big Ten","color":"#041E42","rating":57.2,"rank":37,"conf_rank":11,"conf_size":18,"games":5,"results":4,"confidence":"High"},{"team":"Florida","conf":"SEC","color":"#0021A5","rating":56.5,"rank":38,"conf_rank":10,"conf_size":16,"games":6,"results":6,"confidence":"High"},{"team":"Duke","conf":"ACC","color":"#003087","rating":56.2,"rank":39,"conf_rank":5,"conf_size":17,"games":3,"results":1,"confidence":"Medium"},{"team":"Kentucky","conf":"SEC","color":"#0033A0","rating":55.7,"rank":40,"conf_rank":11,"conf_size":16,"games":6,"results":6,"confidence":"High"},{"team":"Texas A&M","conf":"SEC","color":"#500000","rating":55.7,"rank":41,"conf_rank":12,"conf_size":16,"games":5,"results":5,"confidence":"High"},{"team":"Memphis","conf":"AAC","color":"#003087","rating":55.5,"rank":42,"conf_rank":1,"conf_size":14,"games":1,"results":0,"confidence":"Low"},{"team":"Washington","conf":"Big Ten","color":"#4B2E83","rating":55.4,"rank":43,"conf_rank":12,"conf_size":18,"games":5,"results":3,"confidence":"High"},{"team":"TCU","conf":"Big 12","color":"#4D1979","rating":55.2,"rank":44,"conf_rank":8,"conf_size":16,"games":4,"results":3,"confidence":"Medium"},{"team":"Oregon State","conf":"Pac-12","color":"#DC4405","rating":54.8,"rank":45,"conf_rank":2,"conf_size":8,"games":2,"results":0,"confidence":"Medium"},{"team":"Florida State","conf":"ACC","color":"#782F40","rating":54.5,"rank":46,"conf_rank":6,"conf_size":17,"games":5,"results":3,"confidence":"High"},{"team":"Illinois","conf":"Big Ten","color":"#E84A27","rating":54.3,"rank":47,"conf_rank":13,"conf_size":18,"games":3,"results":2,"confidence":"Medium"},{"team":"North Carolina","conf":"ACC","color":"#7BAFD4","rating":54.2,"rank":48,"conf_rank":7,"conf_size":17,"games":4,"results":3,"confidence":"Medium"},{"team":"Pittsburgh","conf":"ACC","color":"#003594","rating":54.0,"rank":49,"conf_rank":8,"conf_size":17,"games":4,"results":3,"confidence":"Medium"},{"team":"Virginia Tech","conf":"ACC","color":"#861F41","rating":53.8,"rank":50,"conf_rank":9,"conf_size":17,"games":2,"results":2,"confidence":"Medium"},{"team":"North Texas","conf":"AAC","color":"#00853E","rating":53.7,"rank":51,"conf_rank":2,"conf_size":14,"games":1,"results":0,"confidence":"Low"},{"team":"Texas State","conf":"Pac-12","color":"#501214","rating":53.3,"rank":52,"conf_rank":3,"conf_size":8,"games":3,"results":2,"confidence":"Medium"},{"team":"Toledo","conf":"MAC","color":"#003E7E","rating":53.1,"rank":53,"conf_rank":1,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"Kansas State","conf":"Big 12","color":"#512888","rating":52.9,"rank":54,"conf_rank":9,"conf_size":16,"games":4,"results":2,"confidence":"Medium"},{"team":"Auburn","conf":"SEC","color":"#0C2340","rating":52.5,"rank":55,"conf_rank":13,"conf_size":16,"games":5,"results":4,"confidence":"High"},{"team":"South Florida","conf":"AAC","color":"#006747","rating":52.3,"rank":56,"conf_rank":3,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Clemson","conf":"ACC","color":"#F56600","rating":52.0,"rank":57,"conf_rank":10,"conf_size":17,"games":4,"results":3,"confidence":"Medium"},{"team":"Minnesota","conf":"Big Ten","color":"#7A0019","rating":52.0,"rank":58,"conf_rank":14,"conf_size":18,"games":3,"results":3,"confidence":"Medium"},{"team":"Cincinnati","conf":"Big 12","color":"#E00122","rating":51.8,"rank":59,"conf_rank":10,"conf_size":16,"games":4,"results":4,"confidence":"Medium"},{"team":"Virginia","conf":"ACC","color":"#232D4B","rating":51.6,"rank":60,"conf_rank":11,"conf_size":17,"games":4,"results":4,"confidence":"Medium"},{"team":"UTSA","conf":"AAC","color":"#0C2340","rating":51.3,"rank":61,"conf_rank":4,"conf_size":14,"games":2,"results":1,"confidence":"Medium"},{"team":"Mississippi State","conf":"SEC","color":"#660000","rating":51.2,"rank":62,"conf_rank":14,"conf_size":16,"games":4,"results":4,"confidence":"Medium"},{"team":"Kansas","conf":"Big 12","color":"#0051BA","rating":51.2,"rank":63,"conf_rank":11,"conf_size":16,"games":5,"results":3,"confidence":"High"},{"team":"UCF","conf":"Big 12","color":"#BA9B37","rating":51.1,"rank":64,"conf_rank":12,"conf_size":16,"games":5,"results":4,"confidence":"High"},{"team":"Louisiana Tech","conf":"Sun Belt","color":"#002F8B","rating":51.0,"rank":65,"conf_rank":2,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Fresno State","conf":"Pac-12","color":"#DB0032","rating":51.0,"rank":66,"conf_rank":4,"conf_size":8,"games":3,"results":1,"confidence":"Medium"},{"team":"Jacksonville State","conf":"CUSA","color":"#CC0000","rating":50.9,"rank":67,"conf_rank":2,"conf_size":10,"games":1,"results":0,"confidence":"Low"},{"team":"Louisiana","conf":"Sun Belt","color":"#CE181E","rating":50.6,"rank":68,"conf_rank":3,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Arizona State","conf":"Big 12","color":"#8C1D40","rating":50.0,"rank":69,"conf_rank":13,"conf_size":16,"games":2,"results":2,"confidence":"Medium"},{"team":"West Virginia","conf":"Big 12","color":"#002855","rating":49.8,"rank":70,"conf_rank":14,"conf_size":16,"games":5,"results":5,"confidence":"High"},{"team":"Georgia Southern","conf":"Sun Belt","color":"#011E41","rating":49.3,"rank":71,"conf_rank":4,"conf_size":14,"games":1,"results":1,"confidence":"Low"},{"team":"Air Force","conf":"MWC","color":"#003087","rating":49.2,"rank":72,"conf_rank":3,"conf_size":10,"games":2,"results":0,"confidence":"Medium"},{"team":"Army","conf":"AAC","color":"#D4BF91","rating":49.1,"rank":73,"conf_rank":5,"conf_size":14,"games":2,"results":0,"confidence":"Medium"},{"team":"Iowa State","conf":"Big 12","color":"#C8102E","rating":49.1,"rank":74,"conf_rank":15,"conf_size":16,"games":6,"results":6,"confidence":"High"},{"team":"Tulsa","conf":"AAC","color":"#002D72","rating":49.0,"rank":75,"conf_rank":6,"conf_size":14,"games":1,"results":0,"confidence":"Low"},{"team":"Purdue","conf":"Big Ten","color":"#CEB888","rating":48.7,"rank":76,"conf_rank":15,"conf_size":18,"games":3,"results":2,"confidence":"Medium"},{"team":"Ohio","conf":"MAC","color":"#00694E","rating":48.5,"rank":77,"conf_rank":2,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"NC State","conf":"ACC","color":"#CC0000","rating":48.4,"rank":78,"conf_rank":12,"conf_size":17,"games":3,"results":2,"confidence":"Medium"},{"team":"Western Michigan","conf":"MAC","color":"#6C4023","rating":48.1,"rank":79,"conf_rank":3,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"UConn","conf":"Ind","color":"#000E2F","rating":47.9,"rank":80,"conf_rank":2,"conf_size":2,"games":2,"results":0,"confidence":"Medium"},{"team":"Michigan State","conf":"Big Ten","color":"#18453B","rating":47.7,"rank":81,"conf_rank":16,"conf_size":18,"games":4,"results":3,"confidence":"Medium"},{"team":"Vanderbilt","conf":"SEC","color":"#866D4B","rating":47.7,"rank":82,"conf_rank":15,"conf_size":16,"games":3,"results":3,"confidence":"Medium"},{"team":"Syracuse","conf":"ACC","color":"#F76900","rating":47.6,"rank":83,"conf_rank":13,"conf_size":17,"games":2,"results":2,"confidence":"Medium"},{"team":"UNLV","conf":"MWC","color":"#CF0A2C","rating":47.6,"rank":84,"conf_rank":4,"conf_size":10,"games":1,"results":0,"confidence":"Low"},{"team":"East Carolina","conf":"AAC","color":"#592A8A","rating":47.3,"rank":85,"conf_rank":7,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Maryland","conf":"Big Ten","color":"#E03A3E","rating":46.7,"rank":86,"conf_rank":17,"conf_size":18,"games":3,"results":1,"confidence":"Medium"},{"team":"Boston College","conf":"ACC","color":"#8A100B","rating":46.5,"rank":87,"conf_rank":14,"conf_size":17,"games":3,"results":1,"confidence":"Medium"},{"team":"Colorado","conf":"Big 12","color":"#CFB87C","rating":46.3,"rank":88,"conf_rank":16,"conf_size":16,"games":3,"results":2,"confidence":"Medium"},{"team":"App State","conf":"Sun Belt","color":"#FFCC00","rating":46.1,"rank":89,"conf_rank":5,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Florida Atlantic","conf":"AAC","color":"#003366","rating":45.7,"rank":90,"conf_rank":8,"conf_size":14,"games":2,"results":0,"confidence":"Medium"},{"team":"Navy","conf":"AAC","color":"#00205B","rating":45.5,"rank":91,"conf_rank":9,"conf_size":14,"games":1,"results":1,"confidence":"Low"},{"team":"Arkansas","conf":"SEC","color":"#9D2235","rating":45.5,"rank":92,"conf_rank":16,"conf_size":16,"games":4,"results":3,"confidence":"Medium"},{"team":"Miami (OH)","conf":"MAC","color":"#C3142D","rating":45.3,"rank":93,"conf_rank":4,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"Utah State","conf":"Pac-12","color":"#0F2439","rating":45.2,"rank":94,"conf_rank":5,"conf_size":8,"games":4,"results":2,"confidence":"Medium"},{"team":"Georgia Tech","conf":"ACC","color":"#B3A369","rating":45.0,"rank":95,"conf_rank":15,"conf_size":17,"games":2,"results":0,"confidence":"Medium"},{"team":"Georgia State","conf":"Sun Belt","color":"#0039A6","rating":44.9,"rank":96,"conf_rank":6,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Wyoming","conf":"MWC","color":"#492F24","rating":44.8,"rank":97,"conf_rank":5,"conf_size":10,"games":1,"results":0,"confidence":"Low"},{"team":"Nevada","conf":"MWC","color":"#003366","rating":44.2,"rank":98,"conf_rank":6,"conf_size":10,"games":2,"results":1,"confidence":"Medium"},{"team":"Arkansas State","conf":"Sun Belt","color":"#CC092F","rating":44.2,"rank":99,"conf_rank":7,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Coastal Carolina","conf":"Sun Belt","color":"#006F71","rating":43.4,"rank":100,"conf_rank":8,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"UAB","conf":"AAC","color":"#1E6B52","rating":43.4,"rank":101,"conf_rank":10,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"San Diego State","conf":"Pac-12","color":"#A6192E","rating":43.2,"rank":102,"conf_rank":6,"conf_size":8,"games":0,"results":0,"confidence":"Low"},{"team":"Delaware","conf":"CUSA","color":"#00539F","rating":43.2,"rank":103,"conf_rank":3,"conf_size":10,"games":2,"results":0,"confidence":"Medium"},{"team":"FIU","conf":"CUSA","color":"#081E3F","rating":42.8,"rank":104,"conf_rank":4,"conf_size":10,"games":0,"results":0,"confidence":"Low"},{"team":"Temple","conf":"AAC","color":"#9D2235","rating":42.3,"rank":105,"conf_rank":11,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Tulane","conf":"AAC","color":"#006747","rating":42.1,"rank":106,"conf_rank":12,"conf_size":14,"games":2,"results":0,"confidence":"Medium"},{"team":"Rutgers","conf":"Big Ten","color":"#CC0033","rating":42.0,"rank":107,"conf_rank":18,"conf_size":18,"games":5,"results":3,"confidence":"High"},{"team":"Hawaii","conf":"MWC","color":"#024731","rating":41.8,"rank":108,"conf_rank":7,"conf_size":10,"games":0,"results":0,"confidence":"Low"},{"team":"San Jose State","conf":"MWC","color":"#0055A2","rating":41.5,"rank":109,"conf_rank":8,"conf_size":10,"games":0,"results":0,"confidence":"Low"},{"team":"California","conf":"ACC","color":"#003262","rating":41.4,"rank":110,"conf_rank":16,"conf_size":17,"games":4,"results":4,"confidence":"Medium"},{"team":"UMass","conf":"MAC","color":"#881C1C","rating":41.1,"rank":111,"conf_rank":5,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"Buffalo","conf":"MAC","color":"#005BBB","rating":40.7,"rank":112,"conf_rank":6,"conf_size":13,"games":2,"results":1,"confidence":"Medium"},{"team":"South Alabama","conf":"Sun Belt","color":"#00205B","rating":40.3,"rank":113,"conf_rank":9,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Troy","conf":"Sun Belt","color":"#8A2432","rating":40.3,"rank":114,"conf_rank":10,"conf_size":14,"games":2,"results":1,"confidence":"Medium"},{"team":"Marshall","conf":"Sun Belt","color":"#00B140","rating":40.3,"rank":115,"conf_rank":11,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Western Kentucky","conf":"CUSA","color":"#C60C30","rating":40.3,"rank":116,"conf_rank":5,"conf_size":10,"games":3,"results":1,"confidence":"Medium"},{"team":"Colorado State","conf":"Pac-12","color":"#1E4D2B","rating":40.2,"rank":117,"conf_rank":7,"conf_size":8,"games":4,"results":3,"confidence":"Medium"},{"team":"Kennesaw State","conf":"CUSA","color":"#FDBB30","rating":39.9,"rank":118,"conf_rank":6,"conf_size":10,"games":3,"results":1,"confidence":"Medium"},{"team":"Stanford","conf":"ACC","color":"#8C1515","rating":39.4,"rank":119,"conf_rank":17,"conf_size":17,"games":2,"results":2,"confidence":"Medium"},{"team":"Washington State","conf":"Pac-12","color":"#981E32","rating":39.4,"rank":120,"conf_rank":8,"conf_size":8,"games":1,"results":1,"confidence":"Low"},{"team":"New Mexico State","conf":"CUSA","color":"#861F41","rating":39.4,"rank":121,"conf_rank":7,"conf_size":10,"games":1,"results":0,"confidence":"Low"},{"team":"Central Michigan","conf":"MAC","color":"#6A0032","rating":39.0,"rank":122,"conf_rank":7,"conf_size":13,"games":2,"results":1,"confidence":"Medium"},{"team":"Old Dominion","conf":"Sun Belt","color":"#003057","rating":38.9,"rank":123,"conf_rank":12,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Southern Miss","conf":"Sun Belt","color":"#FFAB00","rating":38.8,"rank":124,"conf_rank":13,"conf_size":14,"games":1,"results":0,"confidence":"Low"},{"team":"Missouri State","conf":"CUSA","color":"#5E0009","rating":38.4,"rank":125,"conf_rank":8,"conf_size":10,"games":2,"results":1,"confidence":"Medium"},{"team":"Middle Tennessee","conf":"CUSA","color":"#0066CC","rating":38.0,"rank":126,"conf_rank":9,"conf_size":10,"games":3,"results":1,"confidence":"Medium"},{"team":"Rice","conf":"AAC","color":"#00205B","rating":37.6,"rank":127,"conf_rank":13,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Eastern Michigan","conf":"MAC","color":"#046A38","rating":37.2,"rank":128,"conf_rank":8,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"Ball State","conf":"MAC","color":"#BA0C2F","rating":36.9,"rank":129,"conf_rank":9,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"Bowling Green","conf":"MAC","color":"#FE5000","rating":35.8,"rank":130,"conf_rank":10,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"Kent State","conf":"MAC","color":"#002664","rating":34.7,"rank":131,"conf_rank":11,"conf_size":13,"games":2,"results":1,"confidence":"Medium"},{"team":"Sam Houston","conf":"CUSA","color":"#F96302","rating":34.4,"rank":132,"conf_rank":10,"conf_size":10,"games":2,"results":1,"confidence":"Medium"},{"team":"UL Monroe","conf":"Sun Belt","color":"#840029","rating":32.3,"rank":133,"conf_rank":14,"conf_size":14,"games":0,"results":0,"confidence":"Low"},{"team":"Akron","conf":"MAC","color":"#041E42","rating":31.8,"rank":134,"conf_rank":12,"conf_size":13,"games":1,"results":0,"confidence":"Low"},{"team":"UTEP","conf":"MWC","color":"#FF8200","rating":30.1,"rank":135,"conf_rank":9,"conf_size":10,"games":0,"results":1,"confidence":"Low"},{"team":"Northern Illinois","conf":"MWC","color":"#BA0C2F","rating":29.6,"rank":136,"conf_rank":10,"conf_size":10,"games":0,"results":0,"confidence":"Low"},{"team":"Charlotte","conf":"AAC","color":"#046A38","rating":29.1,"rank":137,"conf_rank":14,"conf_size":14,"games":1,"results":0,"confidence":"Low"},{"team":"Sacramento State","conf":"MAC","color":"#043927","rating":27.2,"rank":138,"conf_rank":13,"conf_size":13,"games":2,"results":0,"confidence":"Medium"}],"games":[{"away":"James Madison","home":"UConn","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-3.5,"claude_margin":-7.72,"edge":-4.22,"book_src":"open"},{"away":"Florida","home":"Kentucky","neutral":false,"away_rank":null,"home_rank":11,"book_margin":3.5,"claude_margin":2.21,"edge":-1.29,"book_src":"close"},{"away":"Illinois","home":"UCLA","neutral":false,"away_rank":null,"home_rank":4,"book_margin":8.5,"claude_margin":10.96,"edge":2.46,"book_src":"close"},{"away":"Houston","home":"Colorado","neutral":false,"away_rank":14,"home_rank":null,"book_margin":-9.5,"claude_margin":-10.77,"edge":-1.27,"book_src":"close"},{"away":"Northwestern","home":"Ohio State","neutral":false,"away_rank":null,"home_rank":20,"book_margin":13.5,"claude_margin":13.82,"edge":0.32,"book_src":"close"},{"away":"Wake Forest","home":"SMU","neutral":false,"away_rank":13,"home_rank":null,"book_margin":-2.5,"claude_margin":-0.28,"edge":2.22,"book_src":"close"},{"away":"Duke","home":"Miami","neutral":false,"away_rank":null,"home_rank":7,"book_margin":13.5,"claude_margin":15.48,"edge":1.98,"book_src":"close"},{"away":"Alabama","home":"Vanderbilt","neutral":false,"away_rank":3,"home_rank":null,"book_margin":-16.5,"claude_margin":-16.49,"edge":0.01,"book_src":"close"},{"away":"Cincinnati","home":"Iowa State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":2.5,"claude_margin":0.25,"edge":-2.25,"book_src":"open"},{"away":"Oregon State","home":"Boise State","neutral":false,"away_rank":null,"home_rank":24,"book_margin":13.5,"claude_margin":8.18,"edge":-5.32,"book_src":"close"},{"away":"Ole Miss","home":"Oklahoma","neutral":false,"away_rank":19,"home_rank":null,"book_margin":-1.5,"claude_margin":-0.69,"edge":0.81,"book_src":"close"},{"away":"Michigan","home":"Oregon","neutral":false,"away_rank":null,"home_rank":16,"book_margin":10.5,"claude_margin":8.83,"edge":-1.67,"book_src":"close"},{"away":"Baylor","home":"BYU","neutral":false,"away_rank":null,"home_rank":10,"book_margin":7.5,"claude_margin":4.5,"edge":-3.0,"book_src":"close"},{"away":"USC","home":"Indiana","neutral":false,"away_rank":18,"home_rank":9,"book_margin":8.5,"claude_margin":9.72,"edge":1.22,"book_src":"close"},{"away":"Boston College","home":"Notre Dame","neutral":false,"away_rank":null,"home_rank":5,"book_margin":29.5,"claude_margin":27.92,"edge":-1.58,"book_src":"close"},{"away":"Missouri","home":"Georgia","neutral":false,"away_rank":22,"home_rank":1,"book_margin":15.5,"claude_margin":15.23,"edge":-0.27,"book_src":"close"},{"away":"Tennessee","home":"Texas A&M","neutral":false,"away_rank":8,"home_rank":null,"book_margin":-2.5,"claude_margin":-4.09,"edge":-1.59,"book_src":"close"},{"away":"Western Michigan","home":"Akron","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-14.5,"claude_margin":-13.39,"edge":1.11,"book_src":"open"},{"away":"Kent State","home":"Bowling Green","neutral":false,"away_rank":null,"home_rank":null,"book_margin":5.5,"claude_margin":4.1,"edge":-1.4,"book_src":"open"},{"away":"Texas Tech","home":"Oklahoma State","neutral":false,"away_rank":12,"home_rank":25,"book_margin":3.5,"claude_margin":0.44,"edge":-3.06,"book_src":"close"},{"away":"South Carolina","home":"Arkansas","neutral":false,"away_rank":17,"home_rank":null,"book_margin":-8.5,"claude_margin":-10.24,"edge":-1.74,"book_src":"close"},{"away":"Purdue","home":"Iowa","neutral":false,"away_rank":null,"home_rank":15,"book_margin":17.5,"claude_margin":16.02,"edge":-1.48,"book_src":"close"},{"away":"Texas","home":"LSU","neutral":false,"away_rank":6,"home_rank":21,"book_margin":4.5,"claude_margin":2.24,"edge":-2.26,"book_src":"close"},{"away":"Utah","home":"Arizona","neutral":false,"away_rank":2,"home_rank":23,"book_margin":-3.5,"claude_margin":-1.41,"edge":2.09,"book_src":"close"},{"away":"North Dakota State","home":"Hawaii","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-6.5,"claude_margin":-12.5,"edge":-6.0,"book_src":"open"},{"away":"Washington","home":"Michigan State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-4.5,"claude_margin":-4.8,"edge":-0.3,"book_src":"open"},{"away":"Kansas","home":"West Virginia","neutral":false,"away_rank":null,"home_rank":null,"book_margin":2.5,"claude_margin":1.55,"edge":-0.95,"book_src":"open"},{"away":"Syracuse","home":"NC State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-2.5,"claude_margin":3.69,"edge":6.19,"book_src":"open"},{"away":"Wisconsin","home":"Maryland","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-8.5,"claude_margin":-7.84,"edge":0.66,"book_src":"open"},{"away":"Georgia Tech","home":"Clemson","neutral":false,"away_rank":null,"home_rank":null,"book_margin":13.5,"claude_margin":9.99,"edge":-3.51,"book_src":"open"},{"away":"Nebraska","home":"Rutgers","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-13.5,"claude_margin":-14.57,"edge":-1.07,"book_src":"open"},{"away":"Kansas State","home":"TCU","neutral":false,"away_rank":null,"home_rank":null,"book_margin":9.5,"claude_margin":5.15,"edge":-4.35,"book_src":"open"},{"away":"Tulane","home":"Rice","neutral":false,"away_rank":null,"home_rank":null,"book_margin":2.5,"claude_margin":-1.65,"edge":-4.15,"book_src":"open"},{"away":"Ohio","home":"Miami (OH)","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-1.5,"claude_margin":-0.26,"edge":1.24,"book_src":"open"},{"away":"Buffalo","home":"Ball State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-2.5,"claude_margin":-0.87,"edge":1.63,"book_src":"open"},{"away":"Sacramento State","home":"Central Michigan","neutral":false,"away_rank":null,"home_rank":null,"book_margin":18.5,"claude_margin":14.73,"edge":-3.77,"book_src":"open"},{"away":"UMass","home":"Toledo","neutral":false,"away_rank":null,"home_rank":null,"book_margin":14.5,"claude_margin":14.97,"edge":0.47,"book_src":"open"},{"away":"Memphis","home":"South Florida","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-5.5,"claude_margin":-0.2,"edge":5.3,"book_src":"open"},{"away":"Louisiana","home":"UL Monroe","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-10.5,"claude_margin":-15.37,"edge":-4.87,"book_src":"open"},{"away":"Florida State","home":"Pittsburgh","neutral":false,"away_rank":null,"home_rank":null,"book_margin":3.5,"claude_margin":2.5,"edge":-1.0,"book_src":"open"},{"away":"Auburn","home":"Mississippi State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-2.5,"claude_margin":1.65,"edge":4.15,"book_src":"open"},{"away":"Fresno State","home":"Texas State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":8.5,"claude_margin":5.26,"edge":-3.24,"book_src":"open"},{"away":"Middle Tennessee","home":"Liberty","neutral":false,"away_rank":null,"home_rank":null,"book_margin":21.5,"claude_margin":25.34,"edge":3.84,"book_src":"open"},{"away":"Jacksonville State","home":"Western Kentucky","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-7.5,"claude_margin":-7.66,"edge":-0.16,"book_src":"open"},{"away":"Georgia Southern","home":"Georgia State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-5.5,"claude_margin":-1.46,"edge":4.04,"book_src":"open"},{"away":"Florida Atlantic","home":"Tulsa","neutral":false,"away_rank":null,"home_rank":null,"book_margin":5.5,"claude_margin":6.26,"edge":0.76,"book_src":"open"},{"away":"California","home":"Virginia","neutral":false,"away_rank":null,"home_rank":null,"book_margin":12.5,"claude_margin":13.15,"edge":0.65,"book_src":"open"},{"away":"Arizona State","home":"UCF","neutral":false,"away_rank":null,"home_rank":null,"book_margin":2.5,"claude_margin":4.1,"edge":1.6,"book_src":"open"},{"away":"FIU","home":"Delaware","neutral":false,"away_rank":null,"home_rank":null,"book_margin":5.5,"claude_margin":3.28,"edge":-2.22,"book_src":"open"},{"away":"Colorado State","home":"Washington State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":9.5,"claude_margin":2.1,"edge":-7.4,"book_src":"open"},{"away":"Utah State","home":"San Diego State","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-1.5,"claude_margin":0.96,"edge":2.46,"book_src":"open"},{"away":"North Texas","home":"UTSA","neutral":false,"away_rank":null,"home_rank":null,"book_margin":1.5,"claude_margin":0.55,"edge":-0.95,"book_src":"open"},{"away":"UNLV","home":"New Mexico","neutral":false,"away_rank":null,"home_rank":null,"book_margin":14.5,"claude_margin":13.94,"edge":-0.56,"book_src":"open"},{"away":"Troy","home":"South Alabama","neutral":false,"away_rank":null,"home_rank":null,"book_margin":2.5,"claude_margin":2.98,"edge":0.48,"book_src":"open"},{"away":"Louisville","home":"North Carolina","neutral":false,"away_rank":null,"home_rank":null,"book_margin":-3.5,"claude_margin":-5.29,"edge":-1.79,"book_src":"open"}],"adjustments":{},"backtest_note":"Predicting week-11 lines from data through week 10: mean miss 2.26 pts"};/*DATA_END*/
+
+const ABBR = {"Big Ten":"B1G","Ind":"IND"};
+const confAbbr = c => ABBR[c] || c;
+const T = {}; DATA.teams.forEach(t => T[t.team] = t);
+const label = n => `${n} (${confAbbr(T[n].conf)})`;
+const fmt = x => (Math.round(x*2)/2).toFixed(1);
+function lineText(home, away, m){ // m = home margin
+  const r = Math.round(m*2)/2;
+  if (r === 0) return "Pick'em";
+  return r > 0 ? `${home} −${fmt(r)}` : `${away} −${fmt(-r)}`;
+}
+function textOn(hex){
+  const c = hex.replace('#',''); const v = [0,2,4].map(i => parseInt(c.substr(i,2),16)/255).map(u => u<=0.03928?u/12.92:Math.pow((u+0.055)/1.055,2.4));
+  const L = 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; return L > 0.36 ? "#111" : "#fff";
+}
+function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+function erf(x){const t=1/(1+0.3275911*Math.abs(x));const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return x>=0?y:-y;}
+const winProb = m => 0.5*(1+erf(m/(14.5*Math.SQRT2)));
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+document.getElementById('stamp').textContent = `Week ${DATA.week} · updated ${DATA.updated}`;
+
+/* ---------- This Week ---------- */
+function gameCard(g){
+  const away = T[g.away], home = T[g.home];
+  const at = g.neutral ? "vs" : "at";
+  const teamRow = (t, rk) => `<div class="team-line"><span class="rk">${rk?('#'+rk):''}</span><span class="swatch" style="background:${t.color}"></span><span class="nm">${esc(label(t.team))}</span></div>`;
+  return `<article class="card game">
+    ${teamRow(away, g.away_rank)}
+    <div class="note" style="margin:-6px 0 -6px 34px">${at}</div>
+    ${teamRow(home, g.home_rank)}
+    <div class="lines">
+      <div><span class="lbl">Book${g.book_src==='open'?' (open)':''}</span><span class="val">${esc(lineText(g.home,g.away,g.book_margin))}</span></div>
+      <div class="claude"><span class="lbl">Claude</span><span class="val">${esc(lineText(g.home,g.away,g.claude_margin))}</span></div>
+      <div><span class="lbl">Gap</span><span class="val">${Math.abs(g.edge).toFixed(1)}</span></div>
+    </div>
+  </article>`;
+}
+const ranked = DATA.games.filter(g => g.away_rank && g.home_rank).sort((a,b)=>Math.min(a.away_rank,a.home_rank)-Math.min(b.away_rank,b.home_rank));
+document.getElementById('home-title').textContent = `Week ${DATA.week}: ranked vs. ranked`;
+document.getElementById('ranked-games').innerHTML = ranked.length ? ranked.map(gameCard).join('') : '<p class="note">No ranked-vs-ranked games this week.</p>';
+document.getElementById('home-note').textContent = `${DATA.backtest_note}. Home field is worth about ${DATA.hfa.toFixed(1)} points in this model.`;
+
+/* ---------- Line Maker ---------- */
+const byConf = {}; DATA.teams.forEach(t => (byConf[t.conf] ||= []).push(t.team));
+const confOrder = ["SEC","Big Ten","Big 12","ACC","Ind","AAC","Sun Belt","MWC","Pac-12","MAC","CUSA"];
+function fillSelect(sel, def){
+  sel.innerHTML = '<option value="" selected>Choose a team</option>' + confOrder.filter(c=>byConf[c]).map(c => `<optgroup label="${confAbbr(c)}">` + byConf[c].slice().sort().map(n => `<option value="${esc(n)}"${n===def?' selected':''}>${esc(label(n))}</option>`).join('') + '</optgroup>').join('');
+}
+const selA = document.getElementById('teamA'), selB = document.getElementById('teamB');
+fillSelect(selA, null); fillSelect(selB, null);
+let site = "n";
+document.querySelectorAll('.site button').forEach(b => b.addEventListener('click', () => {
+  site = b.dataset.site; document.querySelectorAll('.site button').forEach(x => x.setAttribute('aria-pressed', x===b ? 'true':'false')); calc();
+}));
+function calc(){
+  const a = T[selA.value], b = T[selB.value];
+  const side = t => `<div class="side" style="border-left:6px solid ${t.color}"><span class="note">${esc(label(t.team))}</span><span class="r">${t.rating.toFixed(1)}</span><span class="note">#${t.rank} overall · ${ordinal(t.conf_rank)} of ${t.conf_size} in ${confAbbr(t.conf)} · ${t.confidence} confidence</span></div>`;
+  if (!a || !b){
+    document.getElementById('out-line').textContent = '—';
+    document.getElementById('out-wp').textContent = !a && !b ? 'Pick two teams to see the line.' : 'Now pick the other team.';
+    document.getElementById('out-raw').textContent = '';
+    document.getElementById('cmp').innerHTML = (a ? side(a) : '') + (b ? side(b) : '');
+    return;
+  }
+  let m = a.rating - b.rating + (site==='a' ? DATA.hfa : site==='b' ? -DATA.hfa : 0); // margin for A
+  const r = Math.round(m*2)/2;
+  document.getElementById('out-line').textContent = a===b ? "Same team" : r===0 ? "Pick'em" : (r>0 ? `${a.team} −${fmt(r)}` : `${b.team} −${fmt(-r)}`);
+  const wp = winProb(m);
+  document.getElementById('out-wp').textContent = a===b ? "" : `${a.team} wins ${(wp*100).toFixed(0)}% of the time, ${b.team} ${(100-wp*100).toFixed(0)}%`;
+  const where = site==='n' ? 'on a neutral field' : site==='a' ? `in ${a.team}'s stadium` : `in ${b.team}'s stadium`;
+  document.getElementById('out-raw').textContent = a===b ? "" : `Raw margin ${m>0?'+':''}${m.toFixed(1)} for ${a.team} ${where}`;
+  document.getElementById('cmp').innerHTML = side(a) + side(b);
+}
+selA.addEventListener('change', calc); selB.addEventListener('change', calc); calc();
+
+/* ---------- Rankings ---------- */
+let confFilter = "All";
+const pop = document.getElementById('pop'); let popFor = null;
+function showPop(el, name){
+  const t = T[name]; popFor = el;
+  pop.innerHTML = `<div class="t"><span class="swatch" style="background:${t.color};min-height:18px"></span>${esc(label(t.team))}</div>
+  <dl><dt>Rating</dt><dd>${t.rating.toFixed(1)}</dd><dt>National rank</dt><dd>#${t.rank}</dd><dt>Conference rank</dt><dd>${ordinal(t.conf_rank)} of ${t.conf_size}</dd>
+  <dt>Games in sample</dt><dd>${t.games} lines · ${t.results} results</dd><dt>Confidence</dt><dd>${t.confidence}</dd></dl>`;
+  pop.style.display = 'block';
+  const r = el.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let x = Math.min(Math.max(8, r.left + r.width/2 - pw/2), window.innerWidth - pw - 8);
+  let y = r.bottom + 8; if (y + ph > window.innerHeight - 8) y = r.top - ph - 8;
+  pop.style.left = x + 'px'; pop.style.top = Math.max(8,y) + 'px';
+}
+function hidePop(){ pop.style.display = 'none'; popFor = null; }
+function bindPop(el){
+  const n = el.dataset.team;
+  el.addEventListener('mouseenter', e => { if (matchMedia('(hover:hover)').matches) showPop(el, n); });
+  el.addEventListener('mouseleave', e => { if (matchMedia('(hover:hover)').matches) hidePop(); });
+  el.addEventListener('click', e => { e.stopPropagation(); if (popFor === el && !matchMedia('(hover:hover)').matches) hidePop(); else showPop(el, n); });
+  el.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); popFor === el ? hidePop() : showPop(el, n);} if (e.key==='Escape') hidePop(); });
+}
+document.addEventListener('click', hidePop); window.addEventListener('scroll', () => { if (popFor) showPop(popFor, popFor.dataset.team); }, {passive:true});
+function renderRankings(){
+  const list = DATA.teams.filter(t => confFilter==="All" || t.conf===confFilter);
+  const showRank = t => confFilter==="All" ? t.rank : t.conf_rank;
+  const top = list.slice(0,25), rest = list.slice(25);
+  document.getElementById('top-head').textContent = confFilter==="All" ? "Top 25" : `${confAbbr(confFilter)} standings by rating`;
+  document.getElementById('top25').innerHTML = top.map(t => `<button type="button" class="team-chip" data-team="${esc(t.team)}" style="--tc:${t.color};background:${t.color};color:${textOn(t.color)}"><span class="rank">${showRank(t)}</span><span class="nm">${esc(label(t.team))}</span></button>`).join('');
+  document.getElementById('rest-head').style.display = rest.length ? '' : 'none';
+  document.getElementById('rest').innerHTML = rest.map(t => `<div class="row" tabindex="0" role="button" data-team="${esc(t.team)}"><span class="rank">${showRank(t)}</span><span class="swatch" style="background:${t.color}"></span><span>${esc(label(t.team))}</span></div>`).join('');
+  document.querySelectorAll('#top25 .team-chip, #rest .row').forEach(bindPop);
+}
+const confBtns = ["All", ...confOrder];
+document.getElementById('conf-filters').innerHTML = confBtns.map(c => `<button type="button" data-c="${c}" aria-pressed="${c==='All'}">${c==='All'?'All FBS':confAbbr(c)}</button>`).join('');
+document.querySelectorAll('#conf-filters button').forEach(b => b.addEventListener('click', () => {
+  confFilter = b.dataset.c; document.querySelectorAll('#conf-filters button').forEach(x => x.setAttribute('aria-pressed', x===b)); renderRankings();
+}));
+renderRankings();
+
+/* ---------- Best Bets ---------- */
+const bets = DATA.games.filter(g => Math.abs(g.edge) > 2).map(g => {
+  const takeHome = g.edge > 0;
+  const team = takeHome ? g.home : g.away;
+  const spread = takeHome ? -g.book_margin : g.book_margin; // points for the picked side
+  const spr = Math.round(spread*2)/2;
+  const pick = spr === 0 ? `${team} PK` : `${team} ${spr>0?'+':'−'}${fmt(Math.abs(spr))}`;
+  const thin = T[g.home].confidence==='Low' || T[g.away].confidence==='Low' || g.book_src==='open';
+  return {...g, pick, strong: !thin};
+}).sort((a,b) => (b.strong - a.strong) || (Math.abs(b.edge) - Math.abs(a.edge)));
+document.getElementById('bets-sub').textContent = `Games this week where my line and the sportsbook's are more than 2 points apart. ${bets.length} of ${DATA.games.length} games qualify.`;
+document.getElementById('bets').innerHTML = bets.map(g => `<article class="card bet" style="border-left:6px solid ${T[g.edge>0?g.home:g.away].color}">
+  <div>
+    <div class="pick">${esc(g.pick)}</div>
+    <div class="why">${esc(label(g.away))} ${g.neutral?'vs':'at'} ${esc(label(g.home))}</div>
+    <div class="why">Book: <span class="num">${esc(lineText(g.home,g.away,g.book_margin))}</span>${g.book_src==='open'?' (Sunday open)':''} · Claude: <span class="num">${esc(lineText(g.home,g.away,g.claude_margin))}</span></div>
+  </div>
+  <div class="edge"><div class="n">${Math.abs(g.edge).toFixed(1)}</div><div class="l">pt gap</div><span class="pill ${g.strong?'strong':'lean'}">${g.strong?'Strong':'Lean'}</span></div>
+</article>`).join('') || '<p class="note">No disagreements over 2 points this week.</p>';
+
+document.getElementById('foot').innerHTML = `Ratings are scaled so an average FBS team is 50, and every point of rating is worth a point on the spread. They blend this season's sportsbook spreads, final scores, and ESPN's SP+ ratings, with recent weeks counting most. This week's lines are left out of the ratings, so my number is an independent read. Data through week ${DATA.week-1}.` + (DATA.adjustments && Object.keys(DATA.adjustments).length ? '<br>Injury and news adjustments this week: ' + Object.entries(DATA.adjustments).map(([t,a]) => `${esc(t)} ${a.pts>0?'+':''}${a.pts} (${esc(a.note)})`).join('; ') + '.' : '');
+
+/* ---------- Routing ---------- */
+const VIEWS = ["home","line-maker","rankings","best-bets"];
+function route(){
+  const h = (location.hash||'').slice(1); const v = VIEWS.includes(h) ? h : 'home';
+  VIEWS.forEach(x => document.getElementById('v-'+x).classList.toggle('on', x===v));
+  document.querySelectorAll('nav.tabs a').forEach(a => { if (a.dataset.v===v) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+  hidePop();
+}
+window.addEventListener('hashchange', route); route();
+
+</script>
+</body>
+</html>
