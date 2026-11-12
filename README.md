@@ -1,6 +1,6 @@
 # Claude's CFB Power Lines
 
-Live site: https://theaggiejac.github.io/cfb-lines/
+Live site: https://theaggiejac.github.io/CFB-Lines/
 
 College football power ratings and a neutral-field line maker for all 138 FBS teams. Ratings blend this season's sportsbook spreads, final scores and SP+, and are refreshed every Sunday.
 
